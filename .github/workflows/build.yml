@@ -1,4 +1,4 @@
-name: Calendar Android GOD Build
+name: Calendar APK Build Stable
 
 on:
   push:
@@ -10,31 +10,21 @@ jobs:
     runs-on: ubuntu-22.04
 
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v3
 
-      - name: Setup Python 3.10
-        uses: actions/setup-python@v4
-        with:
-          python-version: "3.10"
-
-      - name: Setup Java 17
-        uses: actions/setup-java@v3
-        with:
-          distribution: temurin
-          java-version: "17"
-
-      - name: Install System Dependencies
+      - name: Install System Packages
         run: |
           sudo apt update
-          sudo apt install -y git zip unzip wget build-essential openjdk-17-jdk
+          sudo apt install -y \
+          openjdk-17-jdk \
+          git zip unzip wget build-essential python3-pip
 
-      - name: Install Python Packages
+      - name: Setup Python Environment
         run: |
-          python -m pip install --upgrade pip
-          pip install buildozer cython==0.29.19 virtualenv setuptools kivy kivymd
+          python3 -m pip install --upgrade pip
+          pip3 install buildozer cython==0.29.19 virtualenv setuptools kivy kivymd
 
-      - name: Setup Android SDK FULL FIX
+      - name: Setup Android SDK Full Stack
         run: |
           set -e
 
@@ -42,12 +32,9 @@ jobs:
           mkdir -p $SDK_ROOT/cmdline-tools/latest
 
           wget https://dl.google.com/android/repository/commandlinetools-linux-10406996_latest.zip -O sdk.zip
-
           unzip sdk.zip -d $SDK_ROOT/cmdline-tools/latest
 
-          if [ -d "$SDK_ROOT/cmdline-tools/latest/cmdline-tools" ]; then
-            mv $SDK_ROOT/cmdline-tools/latest/cmdline-tools $SDK_ROOT/cmdline-tools/latest/tools || true
-          fi
+          mv $SDK_ROOT/cmdline-tools/latest/cmdline-tools $SDK_ROOT/cmdline-tools/latest/tools || true
 
           export ANDROID_SDK_ROOT=$SDK_ROOT
           export PATH=$PATH:$ANDROID_SDK_ROOT/cmdline-tools/latest/tools/bin
@@ -56,12 +43,12 @@ jobs:
           yes | sdkmanager --sdk_root=$ANDROID_SDK_ROOT \
           "platform-tools" \
           "platforms;android-31" \
-          "build-tools;30.0.3" \
           "build-tools;31.0.0" \
+          "build-tools;30.0.3" \
           "build-tools;33.0.0" \
           "cmdline-tools;latest"
 
-      - name: Clean Build Cache
+      - name: Clean Buildozer Cache
         run: |
           buildozer android clean || true
 
