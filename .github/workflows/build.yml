@@ -1,57 +1,42 @@
-name: Calendar APK Build Stable
-
+name: CI
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
 
 jobs:
   build:
     runs-on: ubuntu-22.04
 
     steps:
-      - uses: actions/checkout@v3
+uses: actions/checkout@v2
 
-      - name: Install System Packages
+      used to cache dependencies with a timeout
+name: Get Date
+        id: get-date
         run: |
-          sudo apt update
-          sudo apt install -y \
-          openjdk-17-jdk \
-          git zip unzip wget build-essential python3-pip
+          echo "::set-output name=date::$(/bin/date -u "+%Y%m%d")"
+        shell: bash
 
-      - name: Setup Python Environment
-        run: |
-          python3 -m pip install --upgrade pip
-          pip3 install buildozer cython==0.29.19 virtualenv setuptools kivy kivymd
+name: Cache Buildozer global directory
+        uses: actions/cache@v2
+        with:
+          path: .buildozer_global
+          key: buildozer-global-${{ hashFiles('buildozer.spec') }} # Replace with your path
 
-      - name: Setup Android SDK Full Stack
-        run: |
-          set -e
+uses: actions/cache@v2
+        with:
+          path: .buildozer
+          key: ${{ runner.os }}-${{ steps.get-date.outputs.date }}-${{ hashFiles('buildozer.spec') }}
 
-          SDK_ROOT=$HOME/android-sdk
-          mkdir -p $SDK_ROOT/cmdline-tools/latest
+name: Build with Buildozer
+        uses: ArtemSBulgakov/buildozer-action@v1
+        id: buildozer
+        with:
+          command: buildozer android debug
+          buildozer_version: stable
 
-          wget https://dl.google.com/android/repository/commandlinetools-linux-10406996_latest.zip -O sdk.zip
-          unzip sdk.zip -d $SDK_ROOT/cmdline-tools/latest
-
-          mv $SDK_ROOT/cmdline-tools/latest/cmdline-tools $SDK_ROOT/cmdline-tools/latest/tools || true
-
-          export ANDROID_SDK_ROOT=$SDK_ROOT
-          export PATH=$PATH:$ANDROID_SDK_ROOT/cmdline-tools/latest/tools/bin
-          export PATH=$PATH:$ANDROID_SDK_ROOT/platform-tools
-
-          yes | sdkmanager --sdk_root=$ANDROID_SDK_ROOT \
-          "platform-tools" \
-          "platforms;android-31" \
-          "build-tools;31.0.0" \
-          "build-tools;30.0.3" \
-          "build-tools;33.0.0" \
-          "cmdline-tools;latest"
-
-      - name: Clean Buildozer Cache
-        run: |
-          buildozer android clean || true
-
-      - name: Build APK
-        run: |
-          buildozer android debug
+name: Upload artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: package
+          path: ${{ steps.buildozer.outputs.filename }}
